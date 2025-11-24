@@ -23,15 +23,8 @@ func handleTask(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		var body requestBody
-
-		err := json.NewDecoder(r.Body).Decode(&body)
-		if err != nil {
-			http.Error(w, "Неправильный json", http.StatusBadRequest)
-			return
-		}
+		json.NewDecoder(r.Body).Decode(&body)
 		task = body.Task
-
-		w.Write([]byte("task обновлен"))
 		return
 	}
 
