@@ -1,6 +1,5 @@
 *
 !.gitignore
-!Pet/
-!Pet/**
 !go.mod
 !go.sum
+!main.go
