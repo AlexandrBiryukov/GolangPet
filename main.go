@@ -3,111 +3,139 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
+var db *gorm.DB
+
+func initDB() {
+	dsn := "host=localhost  user=postgres password=1234 dbname=postgres port=5432 sslmode=disable"
+	var err error
+
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("Нет подключения к БД: %v", err)
+	}
+
+	if err := db.AutoMigrate(&requestBody{}); err != nil {
+		log.Fatalf("Мигрвция невозможна: %v", err)
+	}
+}
+
 type requestBody struct {
-	ID   string `json:"id"`
+	ID   string `gorm:"primaryKey" json:"id"`
 	Task string `json:"task"`
 }
 
-var tasks = []requestBody{}
+//var tasks = []requestBody{}
 
-func handleTask(w http.ResponseWriter, r *http.Request) {
+func getTasks(w http.ResponseWriter) {
+	var tasks []requestBody
 
-	if r.Method == http.MethodPost {
-
-		body, err := validJSON(r, false, true)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		task := requestBody{
-			ID:   uuid.NewString(),
-			Task: body.Task,
-		}
-		tasks = append(tasks, task)
-		w.Write(([]byte)("Запрос выполнен"))
+	if err := db.Find(&tasks).Error; err != nil {
+		http.Error(w, `не удалось получить таски`, http.StatusInternalServerError)
 		return
 	}
 
-	if r.Method == http.MethodGet {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(tasks)
-		return
-	}
+	w.WriteHeader(http.StatusOK)
 
-	if r.Method == http.MethodPatch {
-
-		body, err := validJSON(r, true, true)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		for id, v := range tasks {
-			if v.ID == body.ID {
-				tasks[id].Task = body.Task
-				break
-			}
-
-		}
-		w.Write([]byte("Изменено"))
-		return
-
-	}
-
-	if r.Method == http.MethodDelete {
-		body, err := validJSON(r, true, false)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		for id, v := range tasks {
-			if v.ID == body.ID {
-				tasks = append(tasks[:id], tasks[id+1:]...)
-				break
-			}
-
-		}
-		w.Write([]byte("Удалено"))
-		return
-	}
+	json.NewEncoder(w).Encode(tasks)
 
 }
 
-func validJSON(r *http.Request, ID bool, Task bool) (requestBody, error) {
-	var raw map[string]interface{}
-	var body requestBody
+func createTask(w http.ResponseWriter, r *http.Request) {
+	var t requestBody
 
-	err := json.NewDecoder(r.Body).Decode(&raw)
-	if err != nil {
-		return body, fmt.Errorf("Неправильный json")
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		http.Error(w, `Ошибка: неправильный JSON`, http.StatusBadRequest)
+		return
+	}
+	if t.Task == "" {
+		http.Error(w, `Ошибка: поле task пустое или не обнаружено`, http.StatusBadRequest)
+		return
+	}
+	task := requestBody{
+		ID:   uuid.NewString(),
+		Task: t.Task,
 	}
 
-	if ID {
-		if _, ok := raw["id"]; !ok {
-			return body, fmt.Errorf("Нет поля id")
-		}
+	//tasks = append(tasks, t)
+
+	if err := db.Create(&task).Error; err != nil {
+		http.Error(w, `не удалось создать таски`, http.StatusInternalServerError)
+		return
 	}
 
-	if Task {
-		if _, ok := raw["task"]; !ok {
-			return body, fmt.Errorf("Нет поля task")
-		}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(task)
+
+}
+
+func updateTask(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/task/")
+	var update requestBody
+
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		http.Error(w, `Ошибка: неправильный JSON`, http.StatusBadRequest)
+		return
 	}
 
-	rawBytes, _ := json.Marshal(raw)
-	json.Unmarshal(rawBytes, &body)
+	if update.Task == "" {
+		http.Error(w, `Ошибка: task пустой или не обнаружен`, http.StatusBadRequest)
+		return
+	}
 
-	return body, nil
+	var task requestBody
+	if err := db.First(&task, "id = ?", id).Error; err != nil {
+		http.Error(w, `Ошибка: выражение не найдено`, http.StatusBadRequest)
+		return
+	}
+	task.Task = update.Task
+	db.Save(&task)
+	json.NewEncoder(w).Encode(task)
+
+}
+
+func deleteTask(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/task/")
+
+	if err := db.Delete(&requestBody{}, "id = ?", id).Error; err != nil {
+		http.Error(w, "не удалось удалить таск", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+
+}
+
+func taskHandles(w http.ResponseWriter, r *http.Request) {
+	//path := r.URL.Path
+	switch r.Method {
+	case http.MethodGet:
+		getTasks(w)
+	case http.MethodPost:
+		createTask(w, r)
+	case http.MethodPatch:
+		updateTask(w, r)
+	case http.MethodDelete:
+		deleteTask(w, r)
+
+	default:
+		http.Error(w, "метод недоступен", http.StatusMethodNotAllowed)
+	}
+
 }
 
 func main() {
-
-	http.HandleFunc("/task", handleTask)
+	initDB()
+	http.HandleFunc("/task", taskHandles)
+	http.HandleFunc("/task/", taskHandles)
 	fmt.Println("Сервер запущен на localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }
