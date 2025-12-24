@@ -21,6 +21,7 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter) {
 		http.Error(w, `не удалось получить таски`, http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	json.NewEncoder(w).Encode(tasks)
@@ -88,7 +89,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "не удалось удалить таск", http.StatusInternalServerError)
 		return
 	}
-
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNoContent)
 
 }
