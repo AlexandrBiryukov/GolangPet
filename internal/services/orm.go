@@ -1,6 +1,6 @@
 package services
 
-type RequestBody struct {
-	ID   string `gorm:"primaryKey" json:"id"`
+type Tasks struct {
+	ID   uint   `gorm:"primaryKey" json:"id"`
 	Task string `json:"task"`
 }

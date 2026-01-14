@@ -2,15 +2,13 @@ package services
 
 import (
 	"errors"
-
-	"github.com/google/uuid"
 )
 
 type TaskService interface {
-	CreateTask(taskText string) (RequestBody, error)
-	GetTasks() ([]RequestBody, error)
-	GetTaskById(id string) (RequestBody, error)
-	UpdateTask(id, task string) (RequestBody, error)
+	CreateTask(taskText string) (Tasks, error)
+	GetTasks() ([]Tasks, error)
+	GetTaskById(id string) (Tasks, error)
+	UpdateTask(id, task string) (Tasks, error)
 	DeleteTask(id string) error
 }
 
@@ -22,44 +20,44 @@ func NewTaskService(r TaskRepositoty) TaskService {
 	return &taskService{repo: r}
 }
 
-func (s *taskService) CreateTask(taskText string) (RequestBody, error) {
+func (s *taskService) CreateTask(taskText string) (Tasks, error) {
 
 	if taskText == "" {
-		return RequestBody{}, errors.New("Ошибка: поле task пустое или не обнаружено")
+		return Tasks{}, errors.New("Ошибка: поле task пустое или не обнаружено")
 	}
 
-	task := RequestBody{
-		ID:   uuid.NewString(),
+	task := Tasks{
+		//ID:   uuid.New(),
 		Task: taskText,
 	}
 
 	if err := s.repo.CreateTask(task); err != nil {
-		return RequestBody{}, err
+		return Tasks{}, err
 	}
 
 	return task, nil
 }
 
-func (s *taskService) GetTasks() ([]RequestBody, error) {
+func (s *taskService) GetTasks() ([]Tasks, error) {
 	return s.repo.GetTasks()
 }
 
-func (s *taskService) GetTaskById(id string) (RequestBody, error) {
+func (s *taskService) GetTaskById(id string) (Tasks, error) {
 	return s.repo.GetTaskById(id)
 }
 
-func (s *taskService) UpdateTask(id, taskText string) (RequestBody, error) {
+func (s *taskService) UpdateTask(id, taskText string) (Tasks, error) {
 	task, err := s.repo.GetTaskById(id)
 	if err != nil {
-		return RequestBody{}, err
+		return Tasks{}, err
 	}
 	if taskText == "" {
-		return RequestBody{}, errors.New("Ошибка: поле task пустое или не обнаружено")
+		return Tasks{}, errors.New("Ошибка: поле task пустое или не обнаружено")
 	}
 	task.Task = taskText
 
 	if err := s.repo.UpdateTask(task); err != nil {
-		return RequestBody{}, err
+		return Tasks{}, err
 	}
 	return task, nil
 }

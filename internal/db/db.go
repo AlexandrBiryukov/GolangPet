@@ -1,7 +1,6 @@
 package db
 
 import (
-	"golang/internal/services"
 	"log"
 
 	"gorm.io/driver/postgres"
@@ -19,9 +18,9 @@ func InitDB() (*gorm.DB, error) {
 		log.Fatalf("Нет подключения к БД: %v", err)
 	}
 
-	if err := db.AutoMigrate(&services.RequestBody{}); err != nil {
-		log.Fatalf("Мигрвция невозможна: %v", err)
+	//if err := db.AutoMigrate(&services.RequestBody{}); err != nil {
+	//log.Fatalf("Мигрвция невозможна: %v", err)
 
-	}
+	//}
 	return db, nil
 }

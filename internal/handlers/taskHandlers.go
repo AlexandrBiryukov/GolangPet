@@ -29,7 +29,7 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter) {
 }
 
 func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
-	var t services.RequestBody
+	var t services.Tasks
 
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		http.Error(w, `Ошибка: неправильный JSON`, http.StatusBadRequest)
@@ -58,7 +58,7 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var update services.RequestBody
+	var update services.Tasks
 
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		http.Error(w, `Ошибка: неправильный JSON`, http.StatusBadRequest)
