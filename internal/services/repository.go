@@ -3,7 +3,7 @@ package services
 import "gorm.io/gorm"
 
 type TaskRepositoty interface {
-	CreateTask(task Tasks) error
+	CreateTask(task *Tasks) error
 	GetTasks() ([]Tasks, error)
 	GetTaskById(taskId string) (Tasks, error)
 	UpdateTask(task Tasks) error
@@ -17,8 +17,8 @@ func NewTaskRepositoty(db *gorm.DB) TaskRepositoty {
 	return &taskRepositoty{db: db}
 }
 
-func (r *taskRepositoty) CreateTask(task Tasks) error {
-	return r.db.Create(&task).Error
+func (r *taskRepositoty) CreateTask(task *Tasks) error {
+	return r.db.Create(task).Error
 }
 
 func (r *taskRepositoty) GetTasks() ([]Tasks, error) {

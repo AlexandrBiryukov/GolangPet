@@ -1,14 +1,12 @@
 package services
 
-import (
-	"errors"
-)
+import "errors"
 
 type TaskService interface {
-	CreateTask(taskText string) (Tasks, error)
+	CreateTask(taskText string, isDone bool) (Tasks, error)
 	GetTasks() ([]Tasks, error)
 	GetTaskById(id string) (Tasks, error)
-	UpdateTask(id, task string) (Tasks, error)
+	PatchTask(id string, taskText *string, isDone *bool) (Tasks, error)
 	DeleteTask(id string) error
 }
 
@@ -20,21 +18,19 @@ func NewTaskService(r TaskRepositoty) TaskService {
 	return &taskService{repo: r}
 }
 
-func (s *taskService) CreateTask(taskText string) (Tasks, error) {
-
+func (s *taskService) CreateTask(taskText string, isDone bool) (Tasks, error) {
 	if taskText == "" {
 		return Tasks{}, errors.New("Ошибка: поле task пустое или не обнаружено")
 	}
 
 	task := Tasks{
-		//ID:   uuid.New(),
-		Task: taskText,
+		Task:   taskText,
+		IsDone: isDone,
 	}
 
-	if err := s.repo.CreateTask(task); err != nil {
+	if err := s.repo.CreateTask(&task); err != nil {
 		return Tasks{}, err
 	}
-
 	return task, nil
 }
 
@@ -46,15 +42,22 @@ func (s *taskService) GetTaskById(id string) (Tasks, error) {
 	return s.repo.GetTaskById(id)
 }
 
-func (s *taskService) UpdateTask(id, taskText string) (Tasks, error) {
+func (s *taskService) PatchTask(id string, taskText *string, isDone *bool) (Tasks, error) {
 	task, err := s.repo.GetTaskById(id)
 	if err != nil {
 		return Tasks{}, err
 	}
-	if taskText == "" {
-		return Tasks{}, errors.New("Ошибка: поле task пустое или не обнаружено")
+
+	if taskText != nil {
+		if *taskText == "" {
+			return Tasks{}, errors.New("Ошибка: поле task пустое")
+		}
+		task.Task = *taskText
 	}
-	task.Task = taskText
+
+	if isDone != nil {
+		task.IsDone = *isDone
+	}
 
 	if err := s.repo.UpdateTask(task); err != nil {
 		return Tasks{}, err

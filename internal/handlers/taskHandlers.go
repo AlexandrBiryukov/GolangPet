@@ -1,10 +1,13 @@
 package Handlers
 
 import (
-	"encoding/json"
+	"context"
 	"golang/internal/services"
-	"net/http"
-	"strings"
+	"golang/internal/web/tasks"
+)
+
+import (
+	"strconv"
 )
 
 type TaskHandler struct {
@@ -15,96 +18,60 @@ func NewTaskHandler(s services.TaskService) *TaskHandler {
 	return &TaskHandler{service: s}
 }
 
-func (h *TaskHandler) GetTasks(w http.ResponseWriter) {
-	tasks, err := h.service.GetTasks()
+func (h *TaskHandler) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject) (tasks.GetTasksResponseObject, error) {
+	allTasks, err := h.service.GetTasks()
 	if err != nil {
-		http.Error(w, `не удалось получить таски`, http.StatusInternalServerError)
-		return
+		return nil, err
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
-	json.NewEncoder(w).Encode(tasks)
-
+	resp := tasks.GetTasks200JSONResponse{}
+	for _, t := range allTasks {
+		resp = append(resp, tasks.Task{
+			Id:     uint64(t.ID),
+			Task:   t.Task,
+			IsDone: t.IsDone,
+		})
+	}
+	return resp, nil
 }
 
-func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
-	var t services.Tasks
+func (h *TaskHandler) PostTasks(_ context.Context, request tasks.PostTasksRequestObject) (tasks.PostTasksResponseObject, error) {
+	body := request.Body // TaskCreate
 
-	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-		http.Error(w, `Ошибка: неправильный JSON`, http.StatusBadRequest)
-		return
-	}
-	if t.Task == "" {
-		http.Error(w, `Ошибка: поле task пустое или не обнаружено`, http.StatusBadRequest)
-		return
-	}
-	task, err := h.service.CreateTask(t.Task)
+	created, err := h.service.CreateTask(body.Task, body.IsDone)
 	if err != nil {
-		http.Error(w, `не удалось создать таски`, http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(task)
-
+	return tasks.PostTasks201JSONResponse{
+		Id:     uint64(created.ID),
+		Task:   created.Task,
+		IsDone: created.IsDone,
+	}, nil
 }
 
-func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/task/")
-	if id == "" {
-		http.Error(w, "id пустой", http.StatusBadRequest)
-		return
-	}
+func (h *TaskHandler) PatchTaskById(_ context.Context, request tasks.PatchTaskByIdRequestObject) (tasks.PatchTaskByIdResponseObject, error) {
+	idStr := strconv.FormatUint(request.Id, 10)
+	body := request.Body // *TaskPatch (поля указатели)
 
-	var update services.Tasks
-
-	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-		http.Error(w, `Ошибка: неправильный JSON`, http.StatusBadRequest)
-		return
-	}
-
-	if update.Task == "" {
-		http.Error(w, `Ошибка: task пустой или не обнаружен`, http.StatusBadRequest)
-		return
-	}
-
-	updatedTask, err := h.service.UpdateTask(id, update.Task)
+	updated, err := h.service.PatchTask(idStr, body.Task, body.IsDone)
 	if err != nil {
-		http.Error(w, `не удалось обновить таски`, http.StatusBadRequest)
-		return
+		return nil, err
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(updatedTask)
-
+	return tasks.PatchTaskById200JSONResponse{
+		Id:     uint64(updated.ID),
+		Task:   updated.Task,
+		IsDone: updated.IsDone,
+	}, nil
 }
 
-func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/task/")
+func (h *TaskHandler) DeleteTaskById(_ context.Context, request tasks.DeleteTaskByIdRequestObject) (tasks.DeleteTaskByIdResponseObject, error) {
+	idStr := strconv.FormatUint(request.Id, 10)
 
-	if err := h.service.DeleteTask(id); err != nil {
-		http.Error(w, "не удалось удалить таск", http.StatusInternalServerError)
-		return
+	if err := h.service.DeleteTask(idStr); err != nil {
+		return nil, err
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNoContent)
 
-}
-
-func (h *TaskHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.GetTasks(w)
-	case http.MethodPost:
-		h.CreateTask(w, r)
-	case http.MethodPatch:
-		h.UpdateTask(w, r)
-	case http.MethodDelete:
-		h.DeleteTask(w, r)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
+	return tasks.DeleteTaskById204Response{}, nil
 }
