@@ -24,6 +24,7 @@ func NewRepository(db *gorm.DB) Repository {
 
 func (r *repository) Create(user *User) error {
 	return r.db.Create(user).Error
+
 }
 
 func (r *repository) GetAll() ([]User, error) {

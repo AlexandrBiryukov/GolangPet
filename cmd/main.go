@@ -20,9 +20,9 @@ func main() {
 		log.Fatalf("нет подключения к бд: %v", err)
 	}
 
-	if err := database.AutoMigrate(&services.Tasks{}, &userService.User{}); err != nil {
-		log.Fatalf("ошибка автомиграции: %v", err)
-	}
+	//if err := database.AutoMigrate(&services.Tasks{}, &userService.User{}); err != nil {
+	//	log.Fatalf("ошибка автомиграции: %v", err)
+	//}
 	taskRepo := services.NewTaskRepositoty(database)
 	taskService := services.NewTaskService(taskRepo)
 	taskHandlers := Handlers.NewTaskHandler(taskService)
