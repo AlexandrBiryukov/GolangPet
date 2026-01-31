@@ -10,6 +10,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"golang/internal/userService"
+	"golang/internal/web/users"
 )
 
 func main() {
@@ -18,26 +20,28 @@ func main() {
 		log.Fatalf("нет подключения к бд: %v", err)
 	}
 
-	if err := database.AutoMigrate(&services.Tasks{}); err != nil {
+	if err := database.AutoMigrate(&services.Tasks{}, &userService.User{}); err != nil {
 		log.Fatalf("ошибка автомиграции: %v", err)
 	}
 	taskRepo := services.NewTaskRepositoty(database)
 	taskService := services.NewTaskService(taskRepo)
-	taskHandlels := Handlers.NewTaskHandler(taskService)
+	taskHandlers := Handlers.NewTaskHandler(taskService)
 
-	// Инициализируем echo
+	usersRepo := userService.NewRepository(database)
+	usersService := userService.NewService(usersRepo)
+	usersHandlers := Handlers.NewUserHandler(usersService)
+
 	e := echo.New()
-
-	// используем Logger и Recover
 	e.Use(middleware.RequestLogger())
-
 	e.Use(middleware.Recover())
 
-	// Прикол для работы в echo. Передаем и регистрируем хендлер в echo
-	strictHandler := tasks.NewStrictHandler(taskHandlels, nil) // тут будет ошибка
-	tasks.RegisterHandlers(e, strictHandler)
+	tasksStrict := tasks.NewStrictHandler(taskHandlers, nil)
+	tasks.RegisterHandlers(e, tasksStrict)
+
+	usersStrict := users.NewStrictHandler(usersHandlers, nil)
+	users.RegisterHandlers(e, usersStrict)
 
 	if err := e.Start(":8080"); err != nil {
-		log.Fatalf("failed to start with err: %v", err)
+		log.Fatalf("Не удалось запустить из-за ошибки: %v", err)
 	}
 }
