@@ -42,3 +42,11 @@ func (m *MockTaskRepository) GetTaskById(taskId string) (Tasks, error) {
 	}
 	return task, args.Error(1)
 }
+func (m *MockTaskRepository) GetTasksByUserID(userID uint) ([]Tasks, error) {
+	args := m.Called(userID)
+	var tasks []Tasks
+	if res := args.Get(0); res != nil {
+		tasks = res.([]Tasks)
+	}
+	return tasks, args.Error(1)
+}

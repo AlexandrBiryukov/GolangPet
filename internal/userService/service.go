@@ -10,6 +10,7 @@ type Service interface {
 	GetAll() ([]User, error)
 	PatchByID(id uint, email, password *string) (User, error)
 	DeleteByID(id uint) error
+	GetTasksForUser(userID uint) ([]Task, error)
 }
 
 type service struct {
@@ -68,4 +69,8 @@ func (s *service) PatchByID(id uint, email, password *string) (User, error) {
 
 func (s *service) DeleteByID(id uint) error {
 	return s.repo.DeleteByID(id)
+}
+
+func (s *service) GetTasksForUser(userID uint) ([]Task, error) {
+	return s.repo.GetTasksForUser(userID)
 }

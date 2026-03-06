@@ -13,6 +13,7 @@ func TestCreateTask(t *testing.T) {
 		name      string
 		taskText  string
 		isDone    bool
+		userID    uint
 		mockSetup func(m *MockTaskRepository)
 		wantErr   bool
 	}{
@@ -20,6 +21,7 @@ func TestCreateTask(t *testing.T) {
 			name:     "успешное создание",
 			taskText: "Test",
 			isDone:   false,
+			userID:   1,
 			mockSetup: func(m *MockTaskRepository) {
 				m.On("CreateTask", mock.AnythingOfType("*services.Tasks")).Return(nil)
 			},
@@ -29,6 +31,7 @@ func TestCreateTask(t *testing.T) {
 			name:     "ошибка репозитория",
 			taskText: "Test",
 			isDone:   false,
+			userID:   1,
 			mockSetup: func(m *MockTaskRepository) {
 				m.On("CreateTask", mock.AnythingOfType("*services.Tasks")).Return(errors.New("db error"))
 			},
@@ -38,6 +41,7 @@ func TestCreateTask(t *testing.T) {
 			name:      "пустой taskText -> ошибка в сервисе",
 			taskText:  "",
 			isDone:    false,
+			userID:    1,
 			mockSetup: func(m *MockTaskRepository) {}, // repo не должен вызываться
 			wantErr:   true,
 		},
@@ -50,7 +54,7 @@ func TestCreateTask(t *testing.T) {
 
 			svc := NewTaskService(mockRepo)
 
-			res, err := svc.CreateTask(tt.taskText, tt.isDone)
+			res, err := svc.CreateTask(tt.taskText, tt.isDone, tt.userID)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -58,6 +62,7 @@ func TestCreateTask(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.taskText, res.Task)
 				assert.Equal(t, tt.isDone, res.IsDone)
+				assert.Equal(t, tt.userID, res.UserID)
 			}
 
 			mockRepo.AssertExpectations(t)
@@ -243,6 +248,53 @@ func TestDeleteTask(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
+			}
+
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestGetTasksByUserID(t *testing.T) {
+	tests := []struct {
+		name      string
+		userID    uint
+		mockSetup func(m *MockTaskRepository)
+		wantLen   int
+		wantErr   bool
+	}{
+		{
+			name:   "успешно вернул список по user_id",
+			userID: 1,
+			mockSetup: func(m *MockTaskRepository) {
+				m.On("GetTasksByUserID", uint(1)).Return([]Tasks{{ID: 1, Task: "A", IsDone: false, UserID: 1}}, nil)
+			},
+			wantLen: 1,
+		},
+		{
+			name:   "ошибка репозитория",
+			userID: 1,
+			mockSetup: func(m *MockTaskRepository) {
+				m.On("GetTasksByUserID", uint(1)).Return(nil, errors.New("db error"))
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := new(MockTaskRepository)
+			tt.mockSetup(mockRepo)
+
+			svc := NewTaskService(mockRepo)
+
+			res, err := svc.GetTasksByUserID(tt.userID)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Len(t, res, tt.wantLen)
 			}
 
 			mockRepo.AssertExpectations(t)

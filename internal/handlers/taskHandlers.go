@@ -4,9 +4,6 @@ import (
 	"context"
 	"golang/internal/services"
 	"golang/internal/web/tasks"
-)
-
-import (
 	"strconv"
 )
 
@@ -30,15 +27,34 @@ func (h *TaskHandler) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject)
 			Id:     uint64(t.ID),
 			Task:   t.Task,
 			IsDone: t.IsDone,
+			UserId: uint64(t.UserID),
+		})
+	}
+	return resp, nil
+}
+
+func (h *TaskHandler) GetTasksByUserID(_ context.Context, request tasks.GetTasksByUserIDRequestObject) (tasks.GetTasksByUserIDResponseObject, error) {
+	allTasks, err := h.service.GetTasksByUserID(uint(request.Id))
+	if err != nil {
+		return nil, err
+	}
+
+	resp := tasks.GetTasksByUserID200JSONResponse{}
+	for _, t := range allTasks {
+		resp = append(resp, tasks.Task{
+			Id:     uint64(t.ID),
+			Task:   t.Task,
+			IsDone: t.IsDone,
+			UserId: uint64(t.UserID),
 		})
 	}
 	return resp, nil
 }
 
 func (h *TaskHandler) PostTasks(_ context.Context, request tasks.PostTasksRequestObject) (tasks.PostTasksResponseObject, error) {
-	body := request.Body // TaskCreate
+	body := request.Body
 
-	created, err := h.service.CreateTask(body.Task, body.IsDone)
+	created, err := h.service.CreateTask(body.Task, body.IsDone, uint(body.UserId))
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +79,7 @@ func (h *TaskHandler) PatchTaskById(_ context.Context, request tasks.PatchTaskBy
 		Id:     uint64(updated.ID),
 		Task:   updated.Task,
 		IsDone: updated.IsDone,
+		UserId: uint64(updated.UserID),
 	}, nil
 }
 

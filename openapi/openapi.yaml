@@ -109,6 +109,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
 
+  /users/{id}/tasks:
+    get:
+      summary: Get tasks by user id
+      operationId: GetTasksByUserID
+      tags: [ tasks ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint64
+      responses:
+        "200":
+          description: A list of tasks for selected user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+
   /users/{id}:
     patch:
       summary: Patch user by id
@@ -163,7 +185,10 @@ components:
           type: string
         is_done:
           type: boolean
-      required: [id, task, is_done]
+        user_id:
+          type: integer
+          format: uint64
+      required: [id, task, is_done, user_id]
 
     TaskCreate:
       type: object
@@ -172,7 +197,10 @@ components:
           type: string
         is_done:
           type: boolean
-      required: [task, is_done]
+        user_id:
+          type: integer
+          format: uint64
+      required: [task, is_done, user_id]
 
     TaskPatch:
       type: object

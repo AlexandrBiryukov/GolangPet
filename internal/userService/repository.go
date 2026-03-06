@@ -12,6 +12,7 @@ type Repository interface {
 	GetByID(id uint) (User, error)
 	Update(user *User) error
 	DeleteByID(id uint) error
+	GetTasksForUser(userID uint) ([]Task, error)
 }
 
 type repository struct {
@@ -53,4 +54,10 @@ func (r *repository) DeleteByID(id uint) error {
 		return errors.New("user not found")
 	}
 	return nil
+}
+
+func (r *repository) GetTasksForUser(userID uint) ([]Task, error) {
+	var tasks []Task
+	err := r.db.Where("user_id = ?", userID).Find(&tasks).Error
+	return tasks, err
 }
