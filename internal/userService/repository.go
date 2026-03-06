@@ -45,7 +45,7 @@ func (r *repository) Update(user *User) error {
 }
 
 func (r *repository) DeleteByID(id uint) error {
-	res := r.db.Delete(&User{}, id)
+	res := r.db.Unscoped().Delete(&User{}, id)
 	if res.Error != nil {
 		return res.Error
 	}
